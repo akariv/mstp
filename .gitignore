@@ -1,0 +1,23 @@
+# secrets
+OPENAI_API_KEY
+*.key
+.env
+.env.*
+!.env.example
+service-account*.json
+
+node_modules/
+dist/
+lib/
+coverage/
+.firebase/
+*-debug.log
+firebase-debug*.log
+firestore-debug.log
+ui-debug.log
+.DS_Store
+.emulator-data/
+
+# local emulator config
+functions/.secret.local
+functions/.env.local

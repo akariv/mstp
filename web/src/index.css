@@ -1,0 +1,119 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-display: 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'Atkinson Hyperlegible', ui-sans-serif, system-ui, sans-serif;
+
+  --color-paper: var(--paper);
+  --color-sheet: var(--sheet);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-muted: var(--muted);
+  --color-rule: var(--rule);
+  --color-pen: var(--pen);
+  --color-pen-soft: var(--pen-soft);
+  --color-hl: var(--hl);
+  --color-hl-pink: var(--hl-pink);
+  --color-hl-green: var(--hl-green);
+  --color-good: var(--good);
+  --color-bad: var(--bad);
+}
+
+:root {
+  --paper: #f3f6fc;       /* cool school paper */
+  --sheet: #ffffff;
+  --ink: #14213d;         /* text */
+  --ink-soft: #33415e;
+  --muted: #66728a;
+  --rule: #d6deed;        /* notebook lines */
+  --pen: #1d3f8f;         /* blue ballpoint */
+  --pen-soft: #e3eaf8;
+  --hl: #ffe34d;          /* yellow highlighter */
+  --hl-pink: #ff9ccb;
+  --hl-green: #8ef0bf;
+  --good: #11875a;
+  --bad: #c2334d;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --paper: #0e1830;
+    --sheet: #15223f;
+    --ink: #eef2fb;
+    --ink-soft: #c9d3e8;
+    --muted: #93a0bd;
+    --rule: #2a3a5f;
+    --pen: #9db8ff;
+    --pen-soft: #1f2f55;
+    --hl: #e8c92e;
+    --hl-pink: #e0689f;
+    --hl-green: #2fbf83;
+    --good: #52d69c;
+    --bad: #ff7d93;
+    color-scheme: dark;
+  }
+}
+
+html,
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-tap-highlight-color: transparent;
+}
+
+h1, h2, h3 {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+
+:focus-visible {
+  outline: 3px solid var(--pen);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* The signature element: a hand-drawn highlighter stroke behind text. */
+.hl,
+.hl-pink,
+.hl-green {
+  --c: var(--hl);
+  padding: 0 0.2em;
+  margin: 0 -0.1em;
+  border-radius: 0.8em 0.3em;
+  background-image: linear-gradient(100deg, transparent 0.5%, var(--c) 2%, var(--c) 96%, transparent 99.5%);
+  background-repeat: no-repeat;
+  background-size: 100% 62%;
+  background-position: 0 85%;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  color: inherit;
+}
+.hl-pink { --c: var(--hl-pink); }
+.hl-green { --c: var(--hl-green); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .hl, :root:not([data-theme='light']) .hl-pink, :root:not([data-theme='light']) .hl-green { color: #14213d; }
+}
+
+/* Sweep in (used when revealing a score or a flashcard). */
+.hl-sweep {
+  animation: sweep 0.55s cubic-bezier(0.3, 0.7, 0.2, 1) both;
+}
+@keyframes sweep {
+  from { background-size: 0% 62%; }
+  to { background-size: 100% 62%; }
+}
+
+/* Notebook sheet with ruled lines. */
+.ruled {
+  background-color: var(--sheet);
+  background-image: repeating-linear-gradient(to bottom, transparent 0, transparent calc(1.75rem - 1px), var(--rule) calc(1.75rem - 1px), var(--rule) 1.75rem);
+  background-position: 0 0.9rem;
+  line-height: 1.75rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}

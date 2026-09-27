@@ -1,0 +1,69 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function role() { return signedIn() ? request.auth.token.get('role', '') : ''; }
+    function isAdmin() { return role() == 'admin'; }
+    function isMember() { return role() == 'student' || role() == 'admin'; }
+    function isSelf(uid) { return isMember() && request.auth.uid == uid; }
+    function onlyChanges(keys) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(keys);
+    }
+
+    // Managed through the adminUpsertAllowedUser function (keeps auth claims in sync).
+    match /allowedUsers/{email} {
+      allow read: if isAdmin();
+    }
+
+    match /jobs/{jobId} {
+      allow read: if isAdmin();
+    }
+
+    match /testWeeks/{weekId} {
+      allow read: if isMember();
+      allow write: if isAdmin();
+
+      match /subjects/{subjectId} {
+        allow read: if isMember();
+        allow write: if isAdmin();
+
+        match /materials/{materialId} {
+          allow read, write: if isAdmin();
+        }
+
+        match /questions/{questionId} {
+          allow read: if isAdmin() || (isMember() && resource.data.status == 'active');
+          allow write: if isAdmin();
+
+          // Model answers: never readable by students (returned by the evaluator after an attempt).
+          match /private/{docId} {
+            allow read, write: if isAdmin();
+          }
+        }
+      }
+    }
+
+    match /users/{uid} {
+      allow read: if isSelf(uid) || isAdmin();
+      allow update: if isSelf(uid)
+        && onlyChanges(['uiLang', 'wordsKnown'])
+        && request.resource.data.uiLang in ['nl', 'en']
+        && request.resource.data.wordsKnown is int
+        && request.resource.data.wordsKnown >= 0;
+
+      // progress, attempts, subjectStats: written only by Cloud Functions.
+      match /{collection}/{docId} {
+        allow read: if isSelf(uid) || isAdmin();
+      }
+
+      match /vocab/{wordId} {
+        allow delete: if isSelf(uid);
+        allow update: if isSelf(uid)
+          && onlyChanges(['box', 'seen', 'known', 'lastSeen'])
+          && request.resource.data.box is int
+          && request.resource.data.box >= 1
+          && request.resource.data.box <= 5;
+      }
+    }
+  }
+}

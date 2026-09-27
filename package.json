@@ -1,0 +1,31 @@
+{
+  "name": "mstp",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "web",
+    "functions"
+  ],
+  "scripts": {
+    "build": "npm run build -w functions && npm run build -w web",
+    "typecheck": "npm run typecheck -w functions && npm run typecheck -w web",
+    "test": "vitest run",
+    "test:rules": "firebase emulators:exec --only firestore,storage --project demo-mstp \"vitest run --config vitest.rules.config.ts\"",
+    "dev": "npm run dev -w web",
+    "emulators": "npm run build -w functions && firebase emulators:start --project demo-mstp --import .emulator-data --export-on-exit",
+    "test:e2e": "npm run build -w functions && node scripts/e2e.mjs mock",
+    "test:e2e:real": "npm run build -w functions && node scripts/e2e.mjs real"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.2",
+    "firebase": "^12.19.0",
+    "firebase-admin": "^14.5.0",
+    "firebase-tools": "^15.31.0",
+    "pdf-lib": "^1.17.1",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.2"
+  },
+  "dependencies": {
+    "zod": "^4.6.5"
+  }
+}

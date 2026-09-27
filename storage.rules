@@ -1,0 +1,16 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isAdmin() { return request.auth != null && request.auth.token.get('role', '') == 'admin'; }
+
+    match /materials/{weekId}/{subjectId}/{fileName} {
+      allow read, delete: if isAdmin();
+      allow create, update: if isAdmin() && request.resource.size < 60 * 1024 * 1024;
+    }
+
+    // Written only by Cloud Functions.
+    match /artifacts/{path=**} {
+      allow read: if isAdmin();
+    }
+  }
+}
