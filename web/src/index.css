@@ -46,10 +46,9 @@
     --rule: #2a3a5f;
     --pen: #9db8ff;
     --pen-soft: #1f2f55;
-    /* translucent markers so light text stays readable on dark paper */
-    --hl: rgba(255, 221, 51, 0.42);
-    --hl-pink: rgba(255, 120, 180, 0.42);
-    --hl-green: rgba(60, 220, 150, 0.4);
+    --hl: #f5d63d;
+    --hl-pink: #ff8fc2;
+    --hl-green: #6fe3ae;
     --good: #52d69c;
     --bad: #ff7d93;
     color-scheme: dark;
@@ -86,7 +85,7 @@ h1, h2, h3 {
   border-radius: 0.8em 0.3em;
   background-image: linear-gradient(100deg, transparent 0.5%, var(--c) 2%, var(--c) 96%, transparent 99.5%);
   background-repeat: no-repeat;
-  background-size: 100% 62%;
+  background-size: 100% var(--hl-h, 62%);
   background-position: 0 85%;
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
@@ -95,13 +94,21 @@ h1, h2, h3 {
 .hl-pink { --c: var(--hl-pink); }
 .hl-green { --c: var(--hl-green); }
 
+/* On dark paper the marker covers the full glyph height and text turns dark, so letters stay crisp. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) :is(.hl, .hl-pink, .hl-green) {
+    color: #14213d;
+    --hl-h: 92%;
+    background-position: 0 55%;
+  }
+}
+
 /* Sweep in (used when revealing a score or a flashcard). */
 .hl-sweep {
   animation: sweep 0.55s cubic-bezier(0.3, 0.7, 0.2, 1) both;
 }
 @keyframes sweep {
-  from { background-size: 0% 62%; }
-  to { background-size: 100% 62%; }
+  from { background-size: 0% var(--hl-h, 62%); }
 }
 
 /* Notebook sheet with ruled lines. */

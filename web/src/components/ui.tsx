@@ -146,6 +146,6 @@ export function Button({
   );
 }
 
-export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
-  return <div className={`bg-sheet rounded-2xl border border-rule p-4 sm:p-5 ${className}`}>{children}</div>;
+export function Card({ children, className = '', flush = false }: { children: ReactNode; className?: string; flush?: boolean }) {
+  return <div className={`bg-sheet rounded-2xl border border-rule ${flush ? '' : 'p-4 sm:p-5'} ${className}`}>{children}</div>;
 }

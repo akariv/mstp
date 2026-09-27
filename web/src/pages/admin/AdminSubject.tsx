@@ -141,7 +141,7 @@ function Materials({ weekId, subjectId, materials }: { weekId: string; subjectId
             <div className="flex-1 min-w-0">
               <p className="font-bold truncate">{m.fileName}</p>
               <p className="text-sm text-muted">
-                {(m.size / 1024 / 1024).toFixed(1)} MB · {m.extraction ? statusLabel[m.extraction.status] : 'nog niet geanalyseerd'}
+                {m.size < 1024 * 1024 ? `${Math.ceil(m.size / 1024)} KB` : `${(m.size / 1024 / 1024).toFixed(1)} MB`} · {m.extraction ? statusLabel[m.extraction.status] : 'nog niet geanalyseerd'}
                 {m.extraction?.title ? ` · ${m.extraction.title}` : ''}
                 {m.extraction?.error ? ` · ${m.extraction.error}` : ''}
               </p>

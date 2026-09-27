@@ -128,7 +128,7 @@ export default function Subject() {
                 const topicQs = qs.filter((q) => q.topicId === topic.id);
                 if (topicQs.length === 0) return null;
                 return (
-                  <Card key={topic.id} className="p-0 sm:p-0 overflow-hidden">
+                  <Card key={topic.id} flush className="overflow-hidden">
                     <Link
                       to={practiceUrl({ topic: topic.id })}
                       className="flex items-center justify-between gap-3 px-4 py-3 border-b border-rule hover:bg-pen-soft"

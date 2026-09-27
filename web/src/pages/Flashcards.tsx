@@ -97,7 +97,10 @@ export default function Flashcards() {
         )}
       </button>
 
-      <div className={`grid grid-cols-2 gap-3 transition-opacity ${flipped ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+      <div
+        aria-hidden={!flipped}
+        className={`grid grid-cols-2 gap-3 transition-opacity ${flipped ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+      >
         <Button variant="secondary" className="py-3.5 text-lg" onClick={() => answer(false)} tabIndex={flipped ? 0 : -1}>
           {t('cards.notYet')}
         </Button>
