@@ -28,6 +28,10 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Build web app
+        run: npm run build -w web
+        env:
+          VITE_FIREBASE_API_KEY: ${{ secrets.FIREBASE_WEB_API_KEY }}
       - uses: google-github-actions/auth@v3
         with:
           workload_identity_provider: projects/2150730116/locations/global/workloadIdentityPools/github/providers/github

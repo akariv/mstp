@@ -18,9 +18,13 @@ import type {
 const CUSTOM_DOMAIN = 'mstp.change-commit.nl';
 const useEmulators = import.meta.env.VITE_USE_EMULATORS === 'true';
 
-// The web config is public by design; access is enforced by auth + security rules.
+// Injected at build time (GitHub secret FIREBASE_WEB_API_KEY in CI, web/.env.local locally). The key is
+// restricted to our domains; access to data is enforced by auth + security rules.
+const apiKey = import.meta.env.VITE_FIREBASE_API_KEY || (useEmulators ? 'emulator-fake-key' : '');
+if (!apiKey) throw new Error('VITE_FIREBASE_API_KEY is not set (see README)');
+
 export const app = initializeApp({
-  apiKey: 'AIzaSyBpJP47NTnweWY96_0k1xSMVa6i5qmeyro',
+  apiKey,
   // Serving the auth handler from our own domain keeps Google sign-in working when third-party cookies are blocked.
   authDomain: location.hostname === CUSTOM_DOMAIN ? CUSTOM_DOMAIN : 'mstp-509920.firebaseapp.com',
   projectId: useEmulators ? 'demo-mstp' : 'mstp-509920',

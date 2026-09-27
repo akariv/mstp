@@ -7,7 +7,7 @@
     "functions"
   ],
   "scripts": {
-    "build": "npm run build -w functions && npm run build -w web",
+    "build": "npm run build -w functions && VITE_USE_EMULATORS=true npm run build -w web",
     "typecheck": "npm run typecheck -w functions && npm run typecheck -w web",
     "test": "vitest run",
     "test:rules": "firebase emulators:exec --only firestore,storage --project demo-mstp \"vitest run --config vitest.rules.config.ts\"",

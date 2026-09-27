@@ -63,6 +63,10 @@ npm run test:e2e         # full pipeline on emulators with a mock LLM (what CI r
 npm run test:e2e:real    # same, with real OpenAI calls (needs functions/.secret.local: OPENAI_API_KEY=...)
 ```
 
+The web app reads its Firebase API key from `VITE_FIREBASE_API_KEY`. It is not committed: CI takes it from the
+`FIREBASE_WEB_API_KEY` repository secret, and locally you put it in `web/.env.local` (gitignored). Emulator mode
+doesn't need it. The key is restricted to the app's domains and localhost:5173, and to Firebase APIs.
+
 To run the app locally against the emulators:
 ```bash
 echo "LLM_MODE=mock" > functions/.env.local     # or leave out and add functions/.secret.local for real calls
@@ -79,6 +83,7 @@ Add yourself to `allowedUsers` in the Emulator UI (http://localhost:4000) before
   `github-deployer@mstp-509920.iam.gserviceaccount.com`, so there are no keys in GitHub.
 
 ### Operations
+- Deploy by hand (normally CI does this): `VITE_FIREBASE_API_KEY=… npm run build -w web && npx firebase deploy`
 - Add the first admin: `scripts/seed-admin.sh you@gmail.com admin "Name"`. After that, manage users in the app under **Beheer → Gebruikers**.
 - OpenAI key: stored in Secret Manager as `OPENAI_API_KEY`. To rotate it:
   `printf %s "$KEY" | gcloud secrets versions add OPENAI_API_KEY --data-file=- --project mstp-509920`, then redeploy the functions.
