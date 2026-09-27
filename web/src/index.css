@@ -46,9 +46,10 @@
     --rule: #2a3a5f;
     --pen: #9db8ff;
     --pen-soft: #1f2f55;
-    --hl: #e8c92e;
-    --hl-pink: #e0689f;
-    --hl-green: #2fbf83;
+    /* translucent markers so light text stays readable on dark paper */
+    --hl: rgba(255, 221, 51, 0.42);
+    --hl-pink: rgba(255, 120, 180, 0.42);
+    --hl-green: rgba(60, 220, 150, 0.4);
     --good: #52d69c;
     --bad: #ff7d93;
     color-scheme: dark;
@@ -93,9 +94,6 @@ h1, h2, h3 {
 }
 .hl-pink { --c: var(--hl-pink); }
 .hl-green { --c: var(--hl-green); }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) .hl, :root:not([data-theme='light']) .hl-pink, :root:not([data-theme='light']) .hl-green { color: #14213d; }
-}
 
 /* Sweep in (used when revealing a score or a flashcard). */
 .hl-sweep {
