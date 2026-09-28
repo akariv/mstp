@@ -36,9 +36,14 @@ export default function AdminHome() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-3xl font-extrabold">Beheer</h1>
-        <Link to="/beheer/gebruikers">
-          <Button variant="secondary">Gebruikers</Button>
-        </Link>
+        <div className="flex gap-2">
+          <Link to="/beheer/leerlingen">
+            <Button>Voortgang leerlingen</Button>
+          </Link>
+          <Link to="/beheer/gebruikers">
+            <Button variant="secondary">Gebruikers</Button>
+          </Link>
+        </div>
       </div>
 
       <Card className="space-y-3">

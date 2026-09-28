@@ -52,6 +52,22 @@ export function mockResponse(name: string, content: Part[]): unknown {
         }),
       };
     }
+    case 'takeaways': {
+      const sub = /SUBTOPIC: (.*)/.exec(t)?.[1] ?? 'onderwerp';
+      return {
+        sections: [
+          {
+            headingNl: 'Kernbegrippen',
+            headingEn: 'Core concepts',
+            sentences: [
+              { nl: `${sub} is belangrijk (mock).`, en: `${sub} is important (mock).` },
+              { nl: 'Planten maken glucose met licht.', en: 'Plants make glucose using light.' },
+            ],
+          },
+        ],
+        keyTerms: [{ nl: 'de fotosynthese', en: 'photosynthesis', explanationNl: 'glucose maken met licht', explanationEn: 'making glucose with light' }],
+      };
+    }
     case 'evaluation': {
       const answer = /<student_answer>([\s\S]*?)<\/student_answer>/.exec(t)?.[1]?.trim() ?? '';
       const isNl = /ANSWER LANGUAGE: nl/.test(t);

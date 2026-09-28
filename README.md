@@ -36,6 +36,10 @@ tests/          unit/ (vitest), rules/ (emulator), e2e/ (full pipeline on emulat
 
    *Vervang-modus* (`allowDeleteQuestions`) builds a fresh set and **archives** the old questions. They are never hard-deleted, so student history stays intact.
 
+   It also writes the **key takeaways** of each subtopic to `subjects/{s}/takeaways/{topicId}__{subtopicId}`: a
+   condensed summary where every Dutch sentence has its English translation, plus key terms. These are rewritten on
+   every run. *Alleen kernpunten bijwerken* (`questionsPerSubtopic: 0`) refreshes them without adding questions.
+
 Prompt rules (functions/src/llm/prompts):
 - **Examples are not content.** Material often illustrates a concept with content from another domain, such as a
   grammar rule shown with a sentence about physics. Transcripts keep the example, labelled with what it
@@ -58,7 +62,9 @@ It returns feedback in NL and EN, a corrected Dutch sentence and key vocabulary.
 - updates the subject stats, XP (for improvement only), streak and badges;
 - adds new words to `users/{uid}/vocab`.
 
-It is capped at 150 evaluations per user per day.
+It is capped at 150 evaluations per user per day. Every attempt is kept in `users/{uid}/attempts` with the answer,
+question text and feedback. Students see their earlier answers under the feedback, and admins see them under
+**Beheer → Voortgang leerlingen**.
 
 ## Development
 

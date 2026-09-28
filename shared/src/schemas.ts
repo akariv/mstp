@@ -54,6 +54,26 @@ export const GeneratedQuestionSchema = z.object({
 export const GeneratedQuestionsSchema = z.object({ questions: z.array(GeneratedQuestionSchema) });
 export type GeneratedQuestion = z.infer<typeof GeneratedQuestionSchema>;
 
+const SentencePairSchema = z.object({
+  nl: z.string().describe('One sentence in Dutch'),
+  en: z.string().describe('The same sentence in English'),
+});
+export const TakeawaysSchema = z.object({
+  sections: z
+    .array(
+      z.object({
+        headingNl: z.string(),
+        headingEn: z.string(),
+        sentences: z.array(SentencePairSchema),
+      }),
+    )
+    .describe('2-5 short sections, e.g. core concepts, rules, how it works, common mistakes'),
+  keyTerms: z
+    .array(z.object({ nl: z.string(), en: z.string(), explanationNl: z.string(), explanationEn: z.string() }))
+    .describe('The most important terms of this subtopic with a one-line explanation'),
+});
+export type Takeaways = z.infer<typeof TakeawaysSchema>;
+
 export const VocabItemSchema = z.object({
   nl: z.string().describe('Dutch word in dictionary form (lemma), with article for nouns, e.g. "de fotosynthese"'),
   en: z.string().describe('English meaning'),
@@ -121,7 +141,7 @@ export const StartTestMakerSchema = z.object({
   subjectId: z.string().min(1),
   forceReanalyze: z.boolean().default(false),
   allowDeleteQuestions: z.boolean().default(false),
-  questionsPerSubtopic: z.number().int().min(2).max(20).default(6),
+  questionsPerSubtopic: z.number().int().min(0).max(20).default(6), // 0 = only refresh the key takeaways
 });
 export type StartTestMakerRequest = z.input<typeof StartTestMakerSchema>;
 

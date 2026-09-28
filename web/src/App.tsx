@@ -11,10 +11,13 @@ import Subject from './pages/Subject';
 import Practice from './pages/Practice';
 import Vocabulary from './pages/Vocabulary';
 import Flashcards from './pages/Flashcards';
+import Takeaways from './pages/Takeaways';
 
 const AdminHome = lazy(() => import('./pages/admin/AdminHome'));
 const AdminUsers = lazy(() => import('./pages/admin/AdminUsers'));
 const AdminSubject = lazy(() => import('./pages/admin/AdminSubject'));
+const AdminStudents = lazy(() => import('./pages/admin/AdminStudents'));
+const AdminStudent = lazy(() => import('./pages/admin/AdminStudent'));
 
 function Gate() {
   const { user, role, profile } = useAuth();
@@ -36,12 +39,15 @@ function Gate() {
         <Route index element={<Home />} />
         <Route path="w/:weekId/s/:subjectId" element={<Subject />} />
         <Route path="w/:weekId/s/:subjectId/oefenen" element={<Practice />} />
+        <Route path="w/:weekId/s/:subjectId/kernpunten/:topicId/:subtopicId?" element={<Takeaways />} />
         <Route path="woorden" element={<Vocabulary />} />
         <Route path="kaartjes" element={<Flashcards />} />
         {role === 'admin' && (
           <>
             <Route path="beheer" element={<AdminHome />} />
             <Route path="beheer/gebruikers" element={<AdminUsers />} />
+            <Route path="beheer/leerlingen" element={<AdminStudents />} />
+            <Route path="beheer/leerlingen/:uid" element={<AdminStudent />} />
             <Route path="beheer/w/:weekId/s/:subjectId" element={<AdminSubject />} />
           </>
         )}

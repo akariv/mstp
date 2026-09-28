@@ -14,10 +14,11 @@ import {
   where,
 } from 'firebase/firestore';
 import { deleteObject, ref as storageRef, uploadBytesResumable } from 'firebase/storage';
-import { questionFingerprint, type JobDoc, type MaterialDoc, type QuestionAnswerDoc, type QuestionDoc, type SubjectDoc, type TestWeekDoc } from '@shared';
+import { questionFingerprint, takeawaysDocId, type TakeawaysDoc, type JobDoc, type MaterialDoc, type QuestionAnswerDoc, type QuestionDoc, type SubjectDoc, type TestWeekDoc } from '@shared';
 import { api, db, storage } from '../../lib/firebase';
 import { useDoc, useQuery, type WithId } from '../../lib/hooks';
 import { BackLink, Button, Card, Spinner } from '../../components/ui';
+import TakeawaysView from '../../components/Takeaways';
 
 const ACCEPT = '.pdf,.png,.jpg,.jpeg,.webp,.heic,.txt,.md,.docx,.csv,.html';
 
@@ -160,6 +161,7 @@ function TestMaker({ weekId, subjectId, hasMaterials }: { weekId: string; subjec
   const [force, setForce] = useState(false);
   const [allowDelete, setAllowDelete] = useState(false);
   const [perSub, setPerSub] = useState(6);
+  const [takeawaysOnly, setTakeawaysOnly] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const jobs = useQuery<JobDoc>(
@@ -172,7 +174,13 @@ function TestMaker({ weekId, subjectId, hasMaterials }: { weekId: string; subjec
     setBusy(true);
     setError(null);
     try {
-      await api.startTestMaker({ weekId, subjectId, forceReanalyze: force, allowDeleteQuestions: allowDelete, questionsPerSubtopic: perSub });
+      await api.startTestMaker({
+        weekId,
+        subjectId,
+        forceReanalyze: force,
+        allowDeleteQuestions: allowDelete && !takeawaysOnly,
+        questionsPerSubtopic: takeawaysOnly ? 0 : perSub,
+      });
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -186,8 +194,8 @@ function TestMaker({ weekId, subjectId, hasMaterials }: { weekId: string; subjec
     <Card className="space-y-4">
       <h2 className="font-bold text-xl">Toetsmaker</h2>
       <p className="text-sm text-muted max-w-prose">
-        Analyseert de lesstof, maakt een overzicht van onderwerpen en genereert oefenvragen met modelantwoorden. Standaard worden alleen nieuwe vragen
-        toegevoegd.
+        Analyseert de lesstof, maakt een overzicht van onderwerpen, schrijft per subonderwerp de kernpunten en genereert oefenvragen met
+        modelantwoorden. Standaard worden alleen nieuwe vragen toegevoegd; kernpunten worden bij elke run opnieuw geschreven.
       </p>
       <div className="grid gap-2 text-sm">
         <label className="flex items-center gap-2">
@@ -195,17 +203,22 @@ function TestMaker({ weekId, subjectId, hasMaterials }: { weekId: string; subjec
           Alle bestanden opnieuw analyseren (ook als ze al geanalyseerd zijn)
         </label>
         <label className="flex items-center gap-2">
-          <input type="checkbox" checked={allowDelete} onChange={(e) => setAllowDelete(e.target.checked)} />
+          <input type="checkbox" checked={takeawaysOnly} onChange={(e) => setTakeawaysOnly(e.target.checked)} />
+          Alleen kernpunten bijwerken (geen nieuwe vragen)
+        </label>
+        <label className={`flex items-center gap-2 ${takeawaysOnly ? 'opacity-40' : ''}`}>
+          <input type="checkbox" checked={allowDelete} disabled={takeawaysOnly} onChange={(e) => setAllowDelete(e.target.checked)} />
           <span>
             Vervang-modus: <span className="text-bad">oude vragen archiveren</span> en een nieuwe set maken
           </span>
         </label>
-        <label className="flex items-center gap-2">
+        <label className={`flex items-center gap-2 ${takeawaysOnly ? 'opacity-40' : ''}`}>
           Vragen per subonderwerp
           <input
             type="number"
             min={2}
             max={20}
+            disabled={takeawaysOnly}
             value={perSub}
             onChange={(e) => setPerSub(Number(e.target.value))}
             className="w-20 rounded-lg border-2 border-rule bg-sheet px-2 py-1"
@@ -213,7 +226,7 @@ function TestMaker({ weekId, subjectId, hasMaterials }: { weekId: string; subjec
         </label>
       </div>
       <Button onClick={run} disabled={busy || running || !hasMaterials}>
-        {running ? 'Bezig…' : 'Genereer vragen'}
+        {running ? 'Bezig…' : takeawaysOnly ? 'Schrijf kernpunten' : 'Genereer vragen'}
       </Button>
       {error && <p className="text-bad font-bold">{error}</p>}
       {(jobs ?? []).map((j) => (
@@ -223,7 +236,8 @@ function TestMaker({ weekId, subjectId, hasMaterials }: { weekId: string; subjec
             <span className={j.status === 'error' ? 'text-bad font-bold' : j.status === 'done' ? 'text-good font-bold' : 'hl'}>{j.status}</span>
             {j.status === 'extracting' && ` (${j.materialsTotal - j.materialsSkipped - j.pending}/${j.materialsTotal - j.materialsSkipped} bestanden)`}
             {j.status === 'generating' && j.subtopicsTotal > 0 && ` (${j.subtopicsDone}/${j.subtopicsTotal} subonderwerpen)`}
-            {j.status === 'done' && ` +${j.questionsAdded} vragen, ${j.questionsArchived} gearchiveerd`}
+            {j.status === 'done' &&
+              ` +${j.questionsAdded} vragen, ${j.questionsArchived} gearchiveerd${j.takeawaysWritten ? `, ${j.takeawaysWritten} kernpunten` : ''}`}
           </summary>
           <pre className="mt-2 text-xs whitespace-pre-wrap text-ink-soft max-h-60 overflow-auto">{j.log.join('\n')}</pre>
         </details>
@@ -238,6 +252,7 @@ function Questions({ weekId, subjectId, subject }: { weekId: string; subjectId: 
     query(collection(db, 'testWeeks', weekId, 'subjects', subjectId, 'questions'), orderBy('createdAt')),
     [weekId, subjectId],
   );
+  const takeaways = useQuery<TakeawaysDoc>(collection(db, 'testWeeks', weekId, 'subjects', subjectId, 'takeaways'), [weekId, subjectId]);
   if (!questions) return <Spinner />;
   const shown = questions.filter((q) => showArchived || q.status === 'active');
   const archived = questions.length - questions.filter((q) => q.status === 'active').length;
@@ -264,6 +279,17 @@ function Questions({ weekId, subjectId, subject }: { weekId: string; subjectId: 
                   {sub.nameNl} <span className="text-muted font-normal">({qs.length})</span>
                 </p>
                 <p className="text-sm text-muted">{sub.descriptionNl}</p>
+                {(() => {
+                  const tk = takeaways?.find((x) => x.id === takeawaysDocId(topic.id, sub.id));
+                  return tk ? (
+                    <details className="my-1 rounded-lg border border-rule px-3 py-2">
+                      <summary className="cursor-pointer text-sm font-bold text-pen">📖 Kernpunten</summary>
+                      <div className="mt-2 text-sm">
+                        <TakeawaysView doc={tk} />
+                      </div>
+                    </details>
+                  ) : null;
+                })()}
                 <ul className="mt-1 space-y-1">
                   {qs.map((q) => (
                     <QuestionRow key={q.id} weekId={weekId} subjectId={subjectId} q={q} />

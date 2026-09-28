@@ -29,6 +29,8 @@ beforeEach(async () => {
     await setDoc(doc(db, 'testWeeks/w1/subjects/bio/questions/q1'), { questionNl: 'Q', status: 'active' });
     await setDoc(doc(db, 'testWeeks/w1/subjects/bio/questions/q2'), { questionNl: 'Old', status: 'archived' });
     await setDoc(doc(db, 'testWeeks/w1/subjects/bio/questions/q1/private/answer'), { detailedAnswerNl: 'A' });
+    await setDoc(doc(db, 'testWeeks/w1/subjects/bio/takeaways/t__s'), { sections: [], keyTerms: [] });
+    await setDoc(doc(db, 'users/alice/attempts/a1'), { questionId: 'q1', answer: 'x', createdAt: 1 });
     await setDoc(doc(db, 'users/alice'), { uiLang: 'nl', wordsKnown: 0, xp: 10 });
     await setDoc(doc(db, 'users/alice/progress/q1'), { bestNl: 50 });
     await setDoc(doc(db, 'users/alice/vocab/blad'), { nl: 'het blad', en: 'leaf', box: 1, seen: 0, known: 0 });
@@ -49,6 +51,27 @@ describe('firestore rules', () => {
     await assertFails(getDoc(doc(db, 'testWeeks/w1/subjects/bio/questions/q2')));
     await assertFails(getDoc(doc(db, 'testWeeks/w1/subjects/bio/questions/q1/private/answer')));
     await assertFails(setDoc(doc(db, 'testWeeks/w1'), { name: 'hack', order: 1 }));
+  });
+
+  it('students can read key takeaways but not write them', async () => {
+    const db = student();
+    await assertSucceeds(getDoc(doc(db, 'testWeeks/w1/subjects/bio/takeaways/t__s')));
+    await assertFails(setDoc(doc(db, 'testWeeks/w1/subjects/bio/takeaways/t__s'), { sections: [] }));
+    await assertFails(getDoc(doc(stranger(), 'testWeeks/w1/subjects/bio/takeaways/t__s')));
+  });
+
+  it('students can read their own past answers only', async () => {
+    await assertSucceeds(getDocs(query(collection(student(), 'users/alice/attempts'), where('questionId', '==', 'q1'))));
+    const bob = env.authenticatedContext('bob', { role: 'student' }).firestore();
+    await assertFails(getDocs(collection(bob, 'users/alice/attempts')));
+  });
+
+  it('admins can see all students and their activity', async () => {
+    const db = admin();
+    await assertSucceeds(getDocs(collection(db, 'users')));
+    await assertSucceeds(getDocs(collection(db, 'users/alice/attempts')));
+    await assertSucceeds(getDocs(collection(db, 'users/alice/progress')));
+    await assertFails(getDocs(collection(student(), 'users')));
   });
 
   it('users without an allowed role see nothing', async () => {

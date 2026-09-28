@@ -10,6 +10,8 @@ import {
   type QuestionDoc,
   type SubjectDoc,
   type SubjectStatsDoc,
+  type TakeawaysDoc,
+  takeawaysDocId,
 } from '@shared';
 import { db } from '../lib/firebase';
 import { useAuth } from '../lib/auth';
@@ -44,6 +46,14 @@ export default function Subject() {
     weekId,
     subjectId,
   ]);
+
+  const takeaways = useQuery<TakeawaysDoc>(collection(db, 'testWeeks', weekId, 'subjects', subjectId, 'takeaways'), [
+    weekId,
+    subjectId,
+  ]);
+  const takeawayIds = new Set((takeaways ?? []).map((x) => x.id));
+  const takeawaysUrl = (topicId: string, subtopicId?: string) =>
+    `/w/${weekId}/s/${subjectId}/kernpunten/${topicId}${subtopicId ? `/${subtopicId}` : ''}`;
 
   const progById = useMemo(() => new Map((progress ?? []).map((p) => [p.id, p])), [progress]);
 
@@ -129,13 +139,20 @@ export default function Subject() {
                 if (topicQs.length === 0) return null;
                 return (
                   <Card key={topic.id} flush className="overflow-hidden">
-                    <Link
-                      to={practiceUrl({ topic: topic.id })}
-                      className="flex items-center justify-between gap-3 px-4 py-3 border-b border-rule hover:bg-pen-soft"
-                    >
-                      <h3 className="font-bold text-lg">{en ? topic.nameEn : topic.nameNl}</h3>
-                      <span className="text-pen font-bold text-sm shrink-0">{t('subject.start')} ›</span>
-                    </Link>
+                    <div className="flex flex-wrap items-center gap-x-2 px-4 py-2 border-b border-rule">
+                      <h3 className="font-bold text-lg flex-1 basis-56 py-1">{en ? topic.nameEn : topic.nameNl}</h3>
+                      {topic.subtopics.some((s) => takeawayIds.has(takeawaysDocId(topic.id, s.id))) && (
+                        <Link to={takeawaysUrl(topic.id)} className="shrink-0 text-sm font-bold text-pen px-2 py-1.5 rounded-lg hover:bg-pen-soft">
+                          📖 {t('takeaways.open')}
+                        </Link>
+                      )}
+                      <Link
+                        to={practiceUrl({ topic: topic.id })}
+                        className="shrink-0 text-sm font-bold text-pen px-2 py-1.5 rounded-lg hover:bg-pen-soft"
+                      >
+                        {t('subject.start')} ›
+                      </Link>
+                    </div>
                     <ul>
                       {topic.subtopics.map((sub) => {
                         const subQs = topicQs.filter((q) => q.subtopicId === sub.id);
@@ -143,8 +160,8 @@ export default function Subject() {
                         const answered = subQs.map((q) => bestAny(progById.get(q.id))).filter((b): b is number => b != null);
                         const mastery = subQs.length ? answered.reduce((a, b) => a + b, 0) / subQs.length : 0;
                         return (
-                          <li key={sub.id} className="border-b border-rule last:border-0">
-                            <Link to={practiceUrl({ topic: topic.id, sub: sub.id })} className="block px-4 py-3 hover:bg-pen-soft">
+                          <li key={sub.id} className="border-b border-rule last:border-0 flex items-stretch">
+                            <Link to={practiceUrl({ topic: topic.id, sub: sub.id })} className="block flex-1 min-w-0 px-4 py-3 hover:bg-pen-soft">
                               <div className="flex justify-between gap-3">
                                 <span>{en ? sub.nameEn : sub.nameNl}</span>
                                 <span className="text-sm text-muted tabular-nums shrink-0">
@@ -155,6 +172,16 @@ export default function Subject() {
                                 <Bar value={mastery} />
                               </div>
                             </Link>
+                            {takeawayIds.has(takeawaysDocId(topic.id, sub.id)) && (
+                              <Link
+                                to={takeawaysUrl(topic.id, sub.id)}
+                                className="shrink-0 grid place-items-center px-4 border-l border-rule text-xl hover:bg-pen-soft"
+                                aria-label={`${t('takeaways.open')}: ${en ? sub.nameEn : sub.nameNl}`}
+                                title={t('takeaways.open')}
+                              >
+                                📖
+                              </Link>
+                            )}
                           </li>
                         );
                       })}

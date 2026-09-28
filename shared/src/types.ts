@@ -1,4 +1,4 @@
-import type { Lang, Role, TopicTree } from './schemas';
+import type { Lang, Role, Takeaways, TopicTree } from './schemas';
 
 export type Millis = number;
 
@@ -16,6 +16,7 @@ export interface UserDoc {
   streak: number;
   bestStreak: number;
   lastActiveDay: string | null; // YYYY-MM-DD (Europe/Amsterdam)
+  lastActiveAt?: Millis;
   usage: { day: string; count: number };
   badges: string[];
   answeredTotal: number;
@@ -101,12 +102,21 @@ export interface JobDoc {
   questionsArchived: number;
   questionsDuplicate: number;
   subtopicsDone: number;
+  takeawaysWritten?: number;
   subtopicsTotal: number;
   createdBy: string;
   createdAt: Millis;
   updatedAt: Millis;
   error?: string;
   log: string[];
+}
+
+/** testWeeks/{w}/subjects/{s}/takeaways/{topicId}__{subtopicId} */
+export interface TakeawaysDoc extends Takeaways {
+  topicId: string;
+  subtopicId: string;
+  createdByJob: string;
+  updatedAt: Millis;
 }
 
 export interface ProgressDoc {
@@ -130,6 +140,11 @@ export interface AttemptDoc {
   contentScore: number;
   languageScore: number | null;
   createdAt: Millis;
+  // Added later; older attempts don't have these.
+  questionNl?: string;
+  feedbackNl?: string;
+  feedbackEn?: string;
+  correctedAnswerNl?: string | null;
 }
 
 export interface VocabDoc {

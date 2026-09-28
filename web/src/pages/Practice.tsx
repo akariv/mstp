@@ -1,13 +1,24 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, limit, orderBy, query, where } from 'firebase/firestore';
 import confetti from 'canvas-confetti';
 import { FunctionsError } from 'firebase/functions';
-import { bestAny, type EvaluateResponse, type Lang, type ProgressDoc, type QuestionDoc } from '@shared';
+import {
+  bestAny,
+  takeawaysDocId,
+  type AttemptDoc,
+  type EvaluateResponse,
+  type Lang,
+  type ProgressDoc,
+  type QuestionDoc,
+  type SubjectDoc,
+  type TakeawaysDoc,
+} from '@shared';
 import { api, db } from '../lib/firebase';
 import { useAuth } from '../lib/auth';
-import { shuffle, type WithId } from '../lib/hooks';
+import { shuffle, useDoc, type WithId } from '../lib/hooks';
+import TakeawaysView from '../components/Takeaways';
 import { BackLink, Button, Card, ScoreText, Spinner } from '../components/ui';
 
 const SESSION_SIZE = 10;
@@ -23,6 +34,11 @@ export default function Practice() {
   const [index, setIndex] = useState(0);
   const [xpTotal, setXpTotal] = useState(0);
   const [answeredCount, setAnsweredCount] = useState(0);
+  const [subject, setSubject] = useState<SubjectDoc | null>(null);
+
+  useEffect(() => {
+    getDoc(doc(db, 'testWeeks', weekId, 'subjects', subjectId)).then((s) => setSubject((s.data() as SubjectDoc) ?? null));
+  }, [weekId, subjectId]);
 
   // Build the session once: unanswered first, then lowest scores.
   useEffect(() => {
@@ -113,6 +129,8 @@ export default function Practice() {
       total={queue.length}
       progress={progress.get(q.id)}
       backTo={backTo}
+      subtopicName={subtopicName(subject, q)}
+      openTakeaways={!!params.get('sub') && index === 0}
       onEvaluated={(r, lang) => {
         setXpTotal((x) => x + r.xpGained);
         setAnsweredCount((c) => c + 1);
@@ -132,6 +150,11 @@ export default function Practice() {
   );
 }
 
+function subtopicName(subject: SubjectDoc | null, q: QuestionDoc) {
+  const sub = subject?.topicTree?.find((t) => t.id === q.topicId)?.subtopics.find((s) => s.id === q.subtopicId);
+  return sub ? { nl: sub.nameNl, en: sub.nameEn } : null;
+}
+
 function QuestionView(props: {
   weekId: string;
   subjectId: string;
@@ -140,12 +163,19 @@ function QuestionView(props: {
   total: number;
   progress?: ProgressDoc;
   backTo: string;
+  subtopicName: { nl: string; en: string } | null;
+  openTakeaways: boolean;
   onEvaluated: (r: EvaluateResponse, lang: Lang) => void;
   onNext: () => void;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { q } = props;
   const [showEn, setShowEn] = useState(false);
+  const [submittedAt, setSubmittedAt] = useState(0);
+  const takeaways = useDoc<TakeawaysDoc>(
+    doc(db, 'testWeeks', props.weekId, 'subjects', props.subjectId, 'takeaways', takeawaysDocId(q.topicId, q.subtopicId)),
+    [props.weekId, props.subjectId, q.topicId, q.subtopicId],
+  );
   const [lang, setLang] = useState<Lang>(() => (localStorage.getItem('answerLang') as Lang) || 'nl');
   const [answer, setAnswer] = useState('');
   const [busy, setBusy] = useState(false);
@@ -165,6 +195,7 @@ function QuestionView(props: {
   const submit = async () => {
     setBusy(true);
     setError(null);
+    setSubmittedAt(Date.now());
     try {
       const { data } = await api.evaluateAnswer({
         weekId: props.weekId,
@@ -201,6 +232,21 @@ function QuestionView(props: {
       <div className="h-1.5 rounded-full bg-rule overflow-hidden" aria-hidden>
         <div className="h-full bg-pen" style={{ width: `${(100 * (props.n - 1)) / props.total}%` }} />
       </div>
+
+      {takeaways && (
+        <details open={props.openTakeaways} className="bg-sheet rounded-2xl border border-rule px-4 py-3 group">
+          <summary className="cursor-pointer font-bold text-pen">
+            📖{' '}
+            {t('takeaways.refresh', {
+              name: props.subtopicName ? (i18n.language === 'en' ? props.subtopicName.en : props.subtopicName.nl) : '',
+            })}
+          </summary>
+          <p className="text-sm text-muted mt-1">{t('takeaways.refreshHint')}</p>
+          <div className="mt-3">
+            <TakeawaysView doc={takeaways} />
+          </div>
+        </details>
+      )}
 
       <section className="ruled rounded-2xl border border-rule px-5 pt-3 pb-5">
         <div className="flex justify-between text-sm text-muted">
@@ -268,7 +314,7 @@ function QuestionView(props: {
 
       {result && (
         <div ref={resultRef} className="scroll-mt-20">
-          <Result r={result} lang={lang} answer={answer} />
+          <Result r={result} lang={lang} answer={answer} questionId={q.id} submittedAt={submittedAt} />
           <div className="mt-5 flex flex-wrap gap-3">
             <Button variant="secondary" onClick={retry}>
               {t('practice.retry')}
@@ -281,7 +327,19 @@ function QuestionView(props: {
   );
 }
 
-function Result({ r, lang, answer }: { r: EvaluateResponse; lang: Lang; answer: string }) {
+function Result({
+  r,
+  lang,
+  answer,
+  questionId,
+  submittedAt,
+}: {
+  r: EvaluateResponse;
+  lang: Lang;
+  answer: string;
+  questionId: string;
+  submittedAt: number;
+}) {
   const { t, i18n } = useTranslation();
   const [fbLang, setFbLang] = useState<Lang>(i18n.language === 'en' ? 'en' : 'nl');
   const fb = useMemo(
@@ -295,6 +353,15 @@ function Result({ r, lang, answer }: { r: EvaluateResponse; lang: Lang; answer: 
 
   return (
     <div className="space-y-4">
+      <Card>
+        <h2 className="text-sm text-muted mb-1">
+          {t('result.yourAnswer')} {lang === 'nl' ? '🇳🇱' : '🇬🇧'}
+        </h2>
+        <p className="ruled rounded-xl px-3 text-lg whitespace-pre-line" lang={lang}>
+          {answer}
+        </p>
+      </Card>
+
       <Card className="flex flex-wrap items-center gap-x-6 gap-y-3">
         <div>
           <p className="text-sm text-muted">{t('result.score')}</p>
@@ -391,6 +458,59 @@ function Result({ r, lang, answer }: { r: EvaluateResponse; lang: Lang; answer: 
           </ul>
         </Card>
       )}
+
+      <PreviousAnswers questionId={questionId} before={submittedAt} />
     </div>
+  );
+}
+
+/** Earlier attempts at this question, folded away: a reference, not part of the main feedback. */
+function PreviousAnswers({ questionId, before }: { questionId: string; before: number }) {
+  const { t, i18n } = useTranslation();
+  const { user } = useAuth();
+  const [items, setItems] = useState<AttemptDoc[] | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    getDocs(
+      query(
+        collection(db, 'users', user.uid, 'attempts'),
+        where('questionId', '==', questionId),
+        orderBy('createdAt', 'desc'),
+        limit(20),
+      ),
+    )
+      .then((s) => setItems(s.docs.map((d) => d.data() as AttemptDoc).filter((a) => a.createdAt < before)))
+      .catch(() => setItems([]));
+  }, [user, questionId, before]);
+
+  if (!items || items.length === 0) return null;
+  const en = i18n.language === 'en';
+  return (
+    <details className="rounded-2xl border border-dashed border-rule px-4 py-3">
+      <summary className="cursor-pointer text-sm font-bold text-muted">{t('result.previousAnswers', { count: items.length })}</summary>
+      <ul className="mt-3 space-y-3">
+        {items.map((a) => (
+          <li key={a.createdAt} className="text-sm">
+            <div className="flex items-center gap-2 text-muted">
+              <span>{new Date(a.createdAt).toLocaleString(en ? 'en-GB' : 'nl-NL', { dateStyle: 'medium', timeStyle: 'short' })}</span>
+              <span aria-hidden>{a.lang === 'nl' ? '🇳🇱' : '🇬🇧'}</span>
+              <span className="ml-auto">
+                <ScoreText score={a.score} />
+              </span>
+            </div>
+            <p className="mt-1 whitespace-pre-line" lang={a.lang}>
+              {a.answer}
+            </p>
+            {(a.feedbackNl || a.feedbackEn) && (
+              <details className="mt-1">
+                <summary className="cursor-pointer text-xs text-pen font-bold">{t('result.feedbackThen')}</summary>
+                <p className="mt-1 text-ink-soft">{en ? a.feedbackEn : a.feedbackNl}</p>
+              </details>
+            )}
+          </li>
+        ))}
+      </ul>
+    </details>
   );
 }

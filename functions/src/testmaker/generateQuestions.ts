@@ -3,6 +3,9 @@ import pLimit from 'p-limit';
 import { FieldValue } from 'firebase-admin/firestore';
 import {
   GeneratedQuestionsSchema,
+  TakeawaysSchema,
+  takeawaysDocId,
+  type TakeawaysDoc,
   TopicTreeSchema,
   type Extraction,
   type JobDoc,
@@ -15,6 +18,7 @@ import {
 import { bucket, db, now, OPENAI_API_KEY, REGION, subjectRef } from '../common';
 import { callStructured, text } from '../llm/client';
 import { generateInstructions } from '../llm/prompts/generate';
+import { takeawaysInstructions } from '../llm/prompts/takeaways';
 import { topicTreeInstructions } from '../llm/prompts/topicTree';
 import { failJob, jobLog, jobRef } from './job';
 import { planMerge, type ExistingQuestion, type GeneratedForSubtopic } from './merge';
@@ -103,39 +107,62 @@ async function run(jobId: string) {
   });
 
   const limit = pLimit(4);
+  const materialPart = text(`SUBJECT: ${subject.name}\nTEST WEEK: ${week.name}\n\nSTUDY MATERIAL:\n\n${materialText}`);
   const generated: GeneratedForSubtopic[] = await Promise.all(
     subtopics.map(({ topic, sub }) =>
       limit(async () => {
-        const already = job.allowDelete
-          ? []
-          : existing.filter((q) => q.subtopicId === sub.id && q.topicId === topic.id).map((q) => `- ${q.questionNl}`);
-        const res = await callStructured({
-          name: 'questions',
-          schema: GeneratedQuestionsSchema,
-          instructions: generateInstructions(),
-          content: [
-            text(`SUBJECT: ${subject.name}\nTEST WEEK: ${week.name}\n\nSTUDY MATERIAL:\n\n${materialText}`),
-            text(
-              [
-                `TOPIC: ${topic.nameNl}`,
-                `SUBTOPIC: ${sub.nameNl}`,
-                `SUBTOPIC GOAL: ${sub.descriptionNl}`,
-                `COUNT: ${job.questionsPerSubtopic}`,
-                `Write exactly COUNT new questions for this subtopic.`,
-                already.length ? `EXISTING QUESTIONS (do not repeat):\n${already.join('\n')}` : '',
-              ].join('\n'),
-            ),
-          ],
+        const subtopicInfo = [`TOPIC: ${topic.nameNl}`, `SUBTOPIC: ${sub.nameNl}`, `SUBTOPIC GOAL: ${sub.descriptionNl}`];
+
+        // Key takeaways are rewritten on every run so they follow the current material.
+        const takeaways = await callStructured({
+          name: 'takeaways',
+          schema: TakeawaysSchema,
+          instructions: takeawaysInstructions(),
+          content: [materialPart, text(subtopicInfo.join('\n'))],
           effort: 'medium',
         });
-        await jobRef(jobId).update({ subtopicsDone: FieldValue.increment(1), updatedAt: now() });
-        return { topicId: topic.id, subtopicId: sub.id, questions: res.questions };
+        await sRef
+          .collection('takeaways')
+          .doc(takeawaysDocId(topic.id, sub.id))
+          .set({ ...takeaways, topicId: topic.id, subtopicId: sub.id, createdByJob: jobId, updatedAt: now() } satisfies TakeawaysDoc);
+
+        let questions: GeneratedForSubtopic['questions'] = [];
+        if (job.questionsPerSubtopic > 0) {
+          const already = job.allowDelete
+            ? []
+            : existing.filter((q) => q.subtopicId === sub.id && q.topicId === topic.id).map((q) => `- ${q.questionNl}`);
+          const res = await callStructured({
+            name: 'questions',
+            schema: GeneratedQuestionsSchema,
+            instructions: generateInstructions(),
+            content: [
+              materialPart,
+              text(
+                [
+                  ...subtopicInfo,
+                  `COUNT: ${job.questionsPerSubtopic}`,
+                  `Write exactly COUNT new questions for this subtopic.`,
+                  already.length ? `EXISTING QUESTIONS (do not repeat):\n${already.join('\n')}` : '',
+                ].join('\n'),
+              ),
+            ],
+            effort: 'medium',
+          });
+          questions = res.questions;
+        }
+        await jobRef(jobId).update({
+          subtopicsDone: FieldValue.increment(1),
+          takeawaysWritten: FieldValue.increment(1),
+          updatedAt: now(),
+        });
+        return { topicId: topic.id, subtopicId: sub.id, questions };
       }),
     ),
   );
 
   // --- 3. Merge ---
-  const plan = planMerge(existing, generated, job.allowDelete);
+  // Takeaways-only runs never archive questions.
+  const plan = planMerge(existing, generated, job.allowDelete && job.questionsPerSubtopic > 0);
   const materialIds = materials.map((m) => m.id);
   let batch = db.batch();
   let ops = 0;
@@ -187,7 +214,7 @@ async function run(jobId: string) {
   await sRef.update({ activeQuestionCount: active.data().count });
   await jobLog(
     jobId,
-    `done: +${plan.toAdd.length} questions, ${plan.toArchive.length} archived, ${plan.duplicates} duplicates skipped`,
+    `done: +${plan.toAdd.length} questions, ${plan.toArchive.length} archived, ${plan.duplicates} duplicates skipped, ${subtopics.length} takeaways`,
     {
       status: 'done',
       questionsAdded: plan.toAdd.length,

@@ -121,7 +121,14 @@ for (const d of qs.docs) {
   const q = d.data();
   assert.ok(q.difficulty >= 1 && q.difficulty <= 5 && q.questionNl && q.questionEn && q.topicId && q.subtopicId);
 }
-console.log(`  ✓ ${qs.size} questions over ${subj.topicTree.length} topics`);
+const subtopicCount = subj.topicTree.reduce((n, t) => n + t.subtopics.length, 0);
+const tks = await adb.collection('testWeeks/tw1/subjects/biologie/takeaways').get();
+assert.equal(tks.size, subtopicCount, 'one takeaways doc per subtopic');
+const tk = tks.docs[0].data();
+assert.ok(tk.sections.length > 0 && tk.sections[0].sentences[0].nl && tk.sections[0].sentences[0].en, 'bilingual sentences');
+assert.ok(tk.keyTerms.length > 0);
+console.log(`  ✓ ${qs.size} questions over ${subj.topicTree.length} topics, ${tks.size} key takeaways`);
+if (process.env.E2E_SHOW) console.log(JSON.stringify(tk, null, 1));
 
 step('test maker: second run reuses analysis and keeps questions');
 const { data: r2 } = await admin.call('startTestMaker', { weekId: 'tw1', subjectId: 'biologie', questionsPerSubtopic: 2 });
@@ -133,7 +140,19 @@ const qs2 = await adb.collection('testWeeks/tw1/subjects/biologie/questions').wh
 assert.ok(qs2.size >= qs.size, 'existing questions kept');
 console.log(`  ✓ cached analysis reused, +${job2.questionsAdded} new questions (${job2.questionsDuplicate} duplicates skipped)`);
 
+step('takeaways-only run adds no questions');
+const before = (await adb.collection('testWeeks/tw1/subjects/biologie/questions').get()).size;
+const { data: r3 } = await admin.call('startTestMaker', { weekId: 'tw1', subjectId: 'biologie', questionsPerSubtopic: 0, allowDeleteQuestions: true });
+const job3 = await waitForJob(r3.jobId);
+assert.equal(job3.status, 'done', job3.error);
+assert.equal(job3.questionsAdded, 0);
+assert.equal(job3.questionsArchived, 0, 'takeaways-only never archives');
+assert.equal((await adb.collection('testWeeks/tw1/subjects/biologie/questions').get()).size, before);
+assert.equal((await adb.doc(`testWeeks/tw1/subjects/biologie/takeaways/${tks.docs[0].id}`).get()).data().createdByJob, r3.jobId, 'takeaways refreshed');
+console.log('  ✓ takeaways refreshed, questions untouched');
+
 step('student practises');
+assert.ok((await getDoc(doc(kid.db, `testWeeks/tw1/subjects/biologie/takeaways/${tks.docs[0].id}`))).exists(), 'student reads takeaways');
 await assert.rejects(getDoc(doc(kid.db, `testWeeks/tw1/subjects/biologie/questions/${q0.id}/private/answer`)));
 const visible = await getDocs(query(collection(kid.db, 'testWeeks/tw1/subjects/biologie/questions'), where('status', '==', 'active')));
 assert.ok(visible.size > 0);
@@ -159,7 +178,11 @@ const stats = (await adb.doc(`users/${kid.user.uid}/subjectStats/tw1__biologie`)
 assert.equal(stats.answered, 1);
 assert.equal(stats.answeredNl, 1);
 assert.equal(stats.sumBestAny, Math.max(en.score, nl.score));
+const attempts = await getDocs(query(collection(kid.db, `users/${kid.user.uid}/attempts`), where('questionId', '==', qid)));
+assert.equal(attempts.size, 2, 'student can read both past answers');
+for (const a of attempts.docs) assert.ok(a.data().answer && a.data().questionNl && a.data().feedbackNl, 'attempt stores answer, question and feedback');
 const user = (await adb.doc(`users/${kid.user.uid}`).get()).data();
+assert.ok(user.lastActiveAt > 0, 'lastActiveAt set');
 assert.equal(user.xp, en.xpGained + nl.xpGained);
 assert.equal(user.streak, 1);
 assert.ok(user.badges.includes('first-answer'));

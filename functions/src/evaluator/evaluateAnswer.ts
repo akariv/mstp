@@ -138,6 +138,10 @@ export const evaluateAnswer = onCall(
         contentScore: llm.contentScore,
         languageScore,
         createdAt: t,
+        questionNl: question.questionNl,
+        feedbackNl: llm.feedbackNl,
+        feedbackEn: llm.feedbackEn,
+        correctedAnswerNl: lang === 'nl' ? llm.correctedAnswerNl : null,
       } satisfies AttemptDoc);
 
       const newWords: string[] = [];
@@ -167,6 +171,7 @@ export const evaluateAnswer = onCall(
           xp: FieldValue.increment(upd.xpGained),
           ...streak,
           answeredTotal,
+          lastActiveAt: t,
           usage: { day: today, count: user?.usage?.day === today ? user.usage.count + 1 : 1 },
           ...(newBadges.length ? { badges: FieldValue.arrayUnion(...newBadges) } : {}),
         },
