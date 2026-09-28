@@ -142,14 +142,16 @@ console.log(`  ✓ cached analysis reused, +${job2.questionsAdded} new questions
 
 step('takeaways-only run adds no questions');
 const before = (await adb.collection('testWeeks/tw1/subjects/biologie/questions').get()).size;
+const treeBefore = JSON.stringify((await adb.doc('testWeeks/tw1/subjects/biologie').get()).data().topicTree);
 const { data: r3 } = await admin.call('startTestMaker', { weekId: 'tw1', subjectId: 'biologie', questionsPerSubtopic: 0, allowDeleteQuestions: true });
 const job3 = await waitForJob(r3.jobId);
 assert.equal(job3.status, 'done', job3.error);
 assert.equal(job3.questionsAdded, 0);
 assert.equal(job3.questionsArchived, 0, 'takeaways-only never archives');
 assert.equal((await adb.collection('testWeeks/tw1/subjects/biologie/questions').get()).size, before);
+assert.equal(JSON.stringify((await adb.doc('testWeeks/tw1/subjects/biologie').get()).data().topicTree), treeBefore, 'topic tree untouched');
 assert.equal((await adb.doc(`testWeeks/tw1/subjects/biologie/takeaways/${tks.docs[0].id}`).get()).data().createdByJob, r3.jobId, 'takeaways refreshed');
-console.log('  ✓ takeaways refreshed, questions untouched');
+console.log('  ✓ takeaways refreshed; questions and topic tree untouched');
 
 step('student practises');
 assert.ok((await getDoc(doc(kid.db, `testWeeks/tw1/subjects/biologie/takeaways/${tks.docs[0].id}`))).exists(), 'student reads takeaways');

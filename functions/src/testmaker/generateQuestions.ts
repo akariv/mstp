@@ -50,7 +50,7 @@ async function run(jobId: string) {
   const job = (await jobRef(jobId).get()).data() as JobDoc;
   if (!job || job.status === 'done') return;
   const { weekId, subjectId } = job;
-  await jobLog(jobId, 'building topic tree', { status: 'generating' });
+  await jobLog(jobId, 'loading analysed material', { status: 'generating' });
 
   const sRef = subjectRef(weekId, subjectId);
   const [subject, week, materialsSnap, questionsSnap] = await Promise.all([
@@ -79,24 +79,31 @@ async function run(jobId: string) {
     .join('\n\n---\n\n');
   const outlines = artifacts.map((a, i) => `FILE ${i + 1} (${a.fileName}):\n${a.outline.join('\n')}`).join('\n\n');
 
-  // In replace mode (allowDelete) the tree may be rebuilt from scratch.
-  const keepTree = job.allowDelete ? undefined : subject.topicTree;
-  const tree = await callStructured({
-    name: 'topic_tree',
-    schema: TopicTreeSchema,
-    instructions: topicTreeInstructions({ subject: subject.name, week: week.name, existing: keepTree }),
-    content: [
-      text(`SUBJECT: ${subject.name}\nTEST WEEK: ${week.name}\n\nSTUDY MATERIAL:\n\n${materialText}`),
-      text(`PER-FILE OUTLINES:\n\n${outlines}`),
-      ...(keepTree?.length ? [text(`EXISTING TOPIC TREE (keep these ids):\n${JSON.stringify(keepTree)}`)] : []),
-    ],
-    effort: 'medium',
-  });
-  const topics = keepTree ? mergeTrees(keepTree, tree.topics) : tree.topics;
-  await sRef.update({ topicTree: topics, summaryNl: tree.subjectSummaryNl, summaryEn: tree.subjectSummaryEn });
+  const takeawaysOnly = job.questionsPerSubtopic === 0;
+  let topics: NonNullable<SubjectDoc['topicTree']>;
+  if (takeawaysOnly && subject.topicTree?.length) {
+    // Takeaways-only runs leave the existing structure exactly as it is.
+    topics = subject.topicTree;
+  } else {
+    // In replace mode (allowDelete) the tree may be rebuilt from scratch.
+    const keepTree = job.allowDelete && !takeawaysOnly ? undefined : subject.topicTree;
+    const tree = await callStructured({
+      name: 'topic_tree',
+      schema: TopicTreeSchema,
+      instructions: topicTreeInstructions({ subject: subject.name, week: week.name, existing: keepTree }),
+      content: [
+        text(`SUBJECT: ${subject.name}\nTEST WEEK: ${week.name}\n\nSTUDY MATERIAL:\n\n${materialText}`),
+        text(`PER-FILE OUTLINES:\n\n${outlines}`),
+        ...(keepTree?.length ? [text(`EXISTING TOPIC TREE (keep these ids):\n${JSON.stringify(keepTree)}`)] : []),
+      ],
+      effort: 'medium',
+    });
+    topics = keepTree ? mergeTrees(keepTree, tree.topics) : tree.topics;
+    await sRef.update({ topicTree: topics, summaryNl: tree.subjectSummaryNl, summaryEn: tree.subjectSummaryEn });
+  }
 
   const subtopics = topics.flatMap((t) => t.subtopics.map((s) => ({ topic: t, sub: s })));
-  await jobLog(jobId, `topic tree: ${topics.length} topics, ${subtopics.length} subtopics`, {
+  await jobLog(jobId, `${takeawaysOnly && subject.topicTree?.length ? 'existing' : 'new'} topic tree: ${topics.length} topics, ${subtopics.length} subtopics`, {
     subtopicsTotal: subtopics.length,
   });
 
