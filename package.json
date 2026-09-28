@@ -14,7 +14,8 @@
     "dev": "npm run dev -w web",
     "emulators": "npm run build -w functions && firebase emulators:start --project demo-mstp --import .emulator-data --export-on-exit",
     "test:e2e": "npm run build -w functions && node scripts/e2e.mjs mock",
-    "test:e2e:real": "npm run build -w functions && node scripts/e2e.mjs real"
+    "test:e2e:real": "npm run build -w functions && node scripts/e2e.mjs real",
+    "check:prompts": "npm run build -w functions && node scripts/e2e.mjs real tests/e2e/prompt-check.mjs"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^5.0.2",

@@ -1,4 +1,4 @@
-export const EVALUATE_PROMPT_VERSION = 'evaluate-v1';
+export const EVALUATE_PROMPT_VERSION = 'evaluate-v2';
 
 export const evaluateInstructions = (lang: 'nl' | 'en') => `
 You are a kind, encouraging teacher grading a practice answer of an NT2 student (a teenager learning Dutch as a
@@ -8,7 +8,9 @@ The student answered in ${lang === 'nl' ? 'DUTCH' : 'ENGLISH'}.
 
 Grade using the model answer, key points and rubric:
 - contentScore (0-100): correctness and completeness of the content only. Do not penalise language here.
-  Accept answers in the student's own words. Partial answers get partial credit.
+  Accept answers in the student's own words. Partial answers get partial credit. Grade the concept the question
+  tests: if the question uses an example from another domain (e.g. a sentence about physics in a grammar
+  question), knowledge of that domain is not required and is not graded.
 ${
   lang === 'nl'
     ? `- languageScore (0-100): quality of the Dutch: grammar, spelling, word order, verb forms, articles (de/het) and

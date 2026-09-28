@@ -6,6 +6,7 @@ import { callStructured, MODEL, text } from '../llm/client';
 import { EXTRACT_PROMPT_VERSION, extractInstructions } from '../llm/prompts/extract';
 import { finishMaterial, jobLog } from './job';
 import { materialToChunks } from './parts';
+import { tailContext } from './order';
 import type { ExtractTask } from './queue';
 
 export const artifactPath = (weekId: string, subjectId: string, materialId: string) =>
@@ -41,13 +42,25 @@ export const tmExtractMaterial = onTaskDispatched<ExtractTask>(
       const [buf] = await bucket().file(material.storagePath).download();
       const chunks = await materialToChunks(buf, material.mimeType, material.fileName);
       const results: Extraction[] = [];
+      // Parts of one document are read in order; each part sees the end of the previous one so sections that
+      // cross a part boundary are continued instead of restarted.
       for (const chunk of chunks) {
+        const previous = results.at(-1);
         results.push(
           await callStructured({
             name: 'extraction',
             schema: ExtractionSchema,
-            instructions: extractInstructions({ subject: subject.name, week: week.name, chunk: chunk.label }),
-            content: [...chunk.parts, text(`File name: ${material.fileName}`)],
+            instructions: extractInstructions({
+              subject: subject.name,
+              week: week.name,
+              chunk: chunk.label,
+              hasPrevious: !!previous,
+            }),
+            content: [
+              ...(previous ? [text(`END OF THE PREVIOUS PART (context only):\n\n${tailContext(previous.contentMarkdown)}`)] : []),
+              ...chunk.parts,
+              text(`File name: ${material.fileName}`),
+            ],
             effort: 'medium',
           }),
         );

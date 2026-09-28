@@ -19,6 +19,7 @@ import { topicTreeInstructions } from '../llm/prompts/topicTree';
 import { failJob, jobLog, jobRef } from './job';
 import { planMerge, type ExistingQuestion, type GeneratedForSubtopic } from './merge';
 import type { GenerateTask } from './queue';
+import { orderMaterials } from './order';
 
 type Artifact = Extraction & { materialId: string; fileName: string };
 
@@ -55,9 +56,11 @@ async function run(jobId: string) {
     sRef.collection('questions').get(),
   ]);
 
-  const materials = materialsSnap.docs
-    .map((d) => ({ id: d.id, ...(d.data() as MaterialDoc) }))
-    .filter((m) => m.extraction?.status === 'done' && m.extraction.artifactPath);
+  const materials = orderMaterials(
+    materialsSnap.docs
+      .map((d) => ({ id: d.id, ...(d.data() as MaterialDoc) }))
+      .filter((m) => m.extraction?.status === 'done' && m.extraction.artifactPath),
+  );
   if (materials.length === 0) throw new Error('No analysed materials available');
 
   const artifacts: Artifact[] = await Promise.all(
@@ -65,9 +68,13 @@ async function run(jobId: string) {
   );
 
   // --- 1. Topic tree (extends the existing tree; ids stay stable) ---
-  const overview = artifacts
-    .map((a) => `### ${a.fileName} — ${a.title}\nSUMMARY:\n${a.summary}\nOUTLINE:\n${a.outline.join('\n')}`)
-    .join('\n\n');
+  // All files as one continuous text in page order, so topics that span pages/files are seen as a whole.
+  // Sent as the first input of every per-subtopic call so the provider's prompt cache is reused between them.
+  const materialText = artifacts
+    .map((a, i) => `## FILE ${i + 1} of ${artifacts.length}: ${a.fileName}\n\n${a.contentMarkdown}`)
+    .join('\n\n---\n\n');
+  const outlines = artifacts.map((a, i) => `FILE ${i + 1} (${a.fileName}):\n${a.outline.join('\n')}`).join('\n\n');
+
   // In replace mode (allowDelete) the tree may be rebuilt from scratch.
   const keepTree = job.allowDelete ? undefined : subject.topicTree;
   const tree = await callStructured({
@@ -75,7 +82,8 @@ async function run(jobId: string) {
     schema: TopicTreeSchema,
     instructions: topicTreeInstructions({ subject: subject.name, week: week.name, existing: keepTree }),
     content: [
-      text(`MATERIAL OVERVIEW:\n\n${overview}`),
+      text(`SUBJECT: ${subject.name}\nTEST WEEK: ${week.name}\n\nSTUDY MATERIAL:\n\n${materialText}`),
+      text(`PER-FILE OUTLINES:\n\n${outlines}`),
       ...(keepTree?.length ? [text(`EXISTING TOPIC TREE (keep these ids):\n${JSON.stringify(keepTree)}`)] : []),
     ],
     effort: 'medium',
@@ -94,8 +102,6 @@ async function run(jobId: string) {
     return { id: d.id, fingerprint: q.fingerprint, status: q.status, topicId: q.topicId, subtopicId: q.subtopicId, questionNl: q.questionNl };
   });
 
-  // Stable prefix first so the provider's prompt cache is reused across subtopic calls.
-  const materialText = artifacts.map((a) => `## FILE: ${a.fileName}\n\n${a.contentMarkdown}`).join('\n\n---\n\n');
   const limit = pLimit(4);
   const generated: GeneratedForSubtopic[] = await Promise.all(
     subtopics.map(({ topic, sub }) =>

@@ -36,6 +36,16 @@ tests/          unit/ (vitest), rules/ (emulator), e2e/ (full pipeline on emulat
 
    *Vervang-modus* (`allowDeleteQuestions`) builds a fresh set and **archives** the old questions. They are never hard-deleted, so student history stays intact.
 
+Prompt rules (functions/src/llm/prompts):
+- **Examples are not content.** Material often illustrates a concept with content from another domain, such as a
+  grammar rule shown with a sentence about physics. Transcripts keep the example, labelled with what it
+  illustrates, and topics and questions are about the concept only.
+- **Context spans pages and files.** Files are read in natural page order ("pagina 2" before "pagina 10"), and
+  each part of a large PDF sees the end of the previous part. Transcripts mark continuations with "(vervolg)" and
+  "(loopt door)". The topic tree and the question generator get the full text of all files.
+- Changing a prompt means bumping its `*_PROMPT_VERSION`. A new extraction version makes the next Test Maker run
+  re-analyse all files.
+
 Model answers live in `questions/{id}/private/answer`, which only admins and functions can read.
 
 ### Evaluator
@@ -61,6 +71,8 @@ npm run typecheck
 npm run test:rules       # Firestore/Storage security rules on the emulator
 npm run test:e2e         # full pipeline on emulators with a mock LLM (what CI runs)
 npm run test:e2e:real    # same, with real OpenAI calls (needs functions/.secret.local: OPENAI_API_KEY=...)
+npm run check:prompts    # real-model scenario for prompt tuning: grammar lesson split over 2 pages with physics
+                         # examples; prints transcripts, topics and questions (RAW=1 prints raw strings)
 ```
 
 The web app reads its Firebase API key from `VITE_FIREBASE_API_KEY`. It is not committed: CI takes it from the

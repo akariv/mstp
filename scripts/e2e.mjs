@@ -1,10 +1,11 @@
-// Runs tests/e2e/pipeline.e2e.mjs inside the Firebase emulators.
+// Runs an e2e script (default tests/e2e/pipeline.e2e.mjs) inside the Firebase emulators.
 // mode "mock": fake LLM (no API key needed) — used in CI.
 // mode "real": real OpenAI calls; needs functions/.secret.local with OPENAI_API_KEY=...
 import { execSync } from 'node:child_process';
 import { existsSync, writeFileSync, rmSync } from 'node:fs';
 
 const mode = process.argv[2] === 'real' ? 'real' : 'mock';
+const script = process.argv[3] ?? 'tests/e2e/pipeline.e2e.mjs';
 const envFile = 'functions/.env.local';
 const secretFile = 'functions/.secret.local';
 const createdSecret = !existsSync(secretFile);
@@ -16,7 +17,7 @@ if (createdSecret) {
 }
 try {
   execSync(
-    'firebase emulators:exec --only auth,firestore,storage,functions,tasks --project demo-mstp "node tests/e2e/pipeline.e2e.mjs"',
+    `firebase emulators:exec --only auth,firestore,storage,functions,tasks --project demo-mstp "node ${script}"`,
     { stdio: 'inherit' },
   );
 } finally {
