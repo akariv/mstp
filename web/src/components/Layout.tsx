@@ -44,6 +44,16 @@ export default function Layout() {
             ))}
           </nav>
           <div className="ml-auto flex items-center gap-1">
+            <NavLink
+              to="/weergave"
+              className={({ isActive }) =>
+                `px-2 py-1.5 rounded-lg text-lg leading-none hover:bg-pen-soft ${isActive ? 'bg-pen-soft' : ''}`
+              }
+              aria-label={t('settings.open')}
+              title={t('settings.open')}
+            >
+              🎨
+            </NavLink>
             <button onClick={toggleLang} className="px-2.5 py-1.5 rounded-lg text-sm font-bold text-pen hover:bg-pen-soft">
               {t('lang.switch')}
             </button>

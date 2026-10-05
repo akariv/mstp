@@ -94,6 +94,9 @@ describe('firestore rules', () => {
     await assertSucceeds(updateDoc(doc(db, 'users/alice'), { uiLang: 'en' }));
     await assertSucceeds(updateDoc(doc(db, 'users/alice'), { wordsKnown: 3 }));
     await assertFails(updateDoc(doc(db, 'users/alice'), { xp: 99999 }));
+    await assertSucceeds(updateDoc(doc(db, 'users/alice'), { appearance: { palette: 'munt', mode: 'dark', font: 'comic' } }));
+    await assertFails(updateDoc(doc(db, 'users/alice'), { appearance: { palette: 'neon', mode: 'dark', font: 'comic' } }));
+    await assertFails(updateDoc(doc(db, 'users/alice'), { appearance: { palette: 'munt', mode: 'dark', font: 'comic', x: 1 } }));
   });
 
   it('students can update flashcard boxes but not word content', async () => {

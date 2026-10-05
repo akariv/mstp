@@ -6,6 +6,14 @@ service cloud.firestore {
     function isAdmin() { return role() == 'admin'; }
     function isMember() { return role() == 'student' || role() == 'admin'; }
     function isSelf(uid) { return isMember() && request.auth.uid == uid; }
+    // Keep the lists in sync with shared/src/appearance.ts.
+    function validAppearance(a) {
+      return a is map
+        && a.keys().hasOnly(['palette', 'mode', 'font'])
+        && a.palette in ['schrift', 'lavendel', 'munt', 'perzik', 'lucht']
+        && a.mode in ['system', 'light', 'dark']
+        && a.font in ['sans', 'serif', 'comic'];
+    }
     function onlyChanges(keys) {
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly(keys);
     }
@@ -52,7 +60,8 @@ service cloud.firestore {
     match /users/{uid} {
       allow read: if isSelf(uid) || isAdmin();
       allow update: if isSelf(uid)
-        && onlyChanges(['uiLang', 'wordsKnown'])
+        && onlyChanges(['uiLang', 'wordsKnown', 'appearance'])
+        && (!('appearance' in request.resource.data) || validAppearance(request.resource.data.appearance))
         && request.resource.data.uiLang in ['nl', 'en']
         && request.resource.data.wordsKnown is int
         && request.resource.data.wordsKnown >= 0;

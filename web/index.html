@@ -3,8 +3,19 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#f3f6fc" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#0e1830" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#f3f6fc" />
+    <script>
+      // Apply the saved colour scheme, mode and font before first paint (logic mirrors src/lib/appearance.ts).
+      (function () {
+        var a = {};
+        try { a = JSON.parse(localStorage.getItem('appearance') || '{}') || {}; } catch (e) {}
+        var r = document.documentElement;
+        var dark = a.mode === 'dark' || (a.mode !== 'light' && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
+        r.setAttribute('data-palette', a.palette || 'schrift');
+        r.setAttribute('data-font', a.font || 'sans');
+        r.setAttribute('data-mode', dark ? 'dark' : 'light');
+      })();
+    </script>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

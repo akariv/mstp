@@ -2,7 +2,7 @@
 
 @theme {
   --font-display: 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif;
-  --font-sans: 'Atkinson Hyperlegible', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-body);
 
   --color-paper: var(--paper);
   --color-sheet: var(--sheet);
@@ -19,40 +19,212 @@
   --color-bad: var(--bad);
 }
 
-:root {
-  --paper: #f3f6fc;       /* cool school paper */
+/*
+ * Colour schemes. <html> carries data-palette (schrift | lavendel | munt | perzik | lucht) and data-mode
+ * (light | dark, resolved from the user's light/dark/system choice by lib/appearance.ts and the inline script
+ * in index.html). Every palette defines the same tokens for both modes.
+ *   --hl        the signature highlighter (logo, new words, mid scores)
+ *   --hl-green  good scores   --hl-pink  low scores
+ *   --hl-ink    text colour on top of a highlighter in dark mode
+ */
+
+/* Schrift: blue ballpoint on cool school paper (default) */
+:root,
+[data-palette='schrift'] {
+  --paper: #f3f6fc;
   --sheet: #ffffff;
-  --ink: #14213d;         /* text */
+  --ink: #14213d;
   --ink-soft: #33415e;
-  --muted: #66728a;
-  --rule: #d6deed;        /* notebook lines */
-  --pen: #1d3f8f;         /* blue ballpoint */
+  --muted: #616d85;
+  --rule: #d6deed;
+  --pen: #1d3f8f;
   --pen-soft: #e3eaf8;
-  --hl: #ffe34d;          /* yellow highlighter */
+  --hl: #ffe34d;
   --hl-pink: #ff9ccb;
   --hl-green: #8ef0bf;
+  --hl-ink: #14213d;
   --good: #11875a;
   --bad: #c2334d;
-  color-scheme: light;
+}
+[data-mode='dark'],
+[data-palette='schrift'][data-mode='dark'] {
+  --paper: #0e1830;
+  --sheet: #15223f;
+  --ink: #eef2fb;
+  --ink-soft: #c9d3e8;
+  --muted: #93a0bd;
+  --rule: #2a3a5f;
+  --pen: #9db8ff;
+  --pen-soft: #1f2f55;
+  --hl: #f5d63d;
+  --hl-pink: #ff8fc2;
+  --hl-green: #6fe3ae;
+  --hl-ink: #14213d;
+  --good: #52d69c;
+  --bad: #ff7d93;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
-    --paper: #0e1830;
-    --sheet: #15223f;
-    --ink: #eef2fb;
-    --ink-soft: #c9d3e8;
-    --muted: #93a0bd;
-    --rule: #2a3a5f;
-    --pen: #9db8ff;
-    --pen-soft: #1f2f55;
-    --hl: #f5d63d;
-    --hl-pink: #ff8fc2;
-    --hl-green: #6fe3ae;
-    --good: #52d69c;
-    --bad: #ff7d93;
-    color-scheme: dark;
-  }
+/* Lavendel: lilac paper, violet ink */
+[data-palette='lavendel'] {
+  --paper: #f6f2fd;
+  --sheet: #fffdff;
+  --ink: #2a2142;
+  --ink-soft: #473c62;
+  --muted: #6f6488;
+  --rule: #e3daf3;
+  --pen: #6143ad;
+  --pen-soft: #ede6fb;
+  --hl: #d8c7ff;
+  --hl-pink: #ffc2dc;
+  --hl-green: #bdebd3;
+  --hl-ink: #2a2142;
+  --good: #1d7f55;
+  --bad: #b8335a;
+}
+[data-palette='lavendel'][data-mode='dark'] {
+  --paper: #1a1529;
+  --sheet: #241d37;
+  --ink: #f2edfc;
+  --ink-soft: #d5cce8;
+  --muted: #a398bb;
+  --rule: #3b3156;
+  --pen: #c7b4ff;
+  --pen-soft: #33294e;
+  --hl: #cdb8ff;
+  --hl-pink: #ffadd0;
+  --hl-green: #98e3bd;
+  --hl-ink: #221a36;
+  --good: #79dcaa;
+  --bad: #ff8eab;
+}
+
+/* Munt: mint paper, deep green ink, butter-yellow marker */
+[data-palette='munt'] {
+  --paper: #eff8f4;
+  --sheet: #ffffff;
+  --ink: #15302a;
+  --ink-soft: #2f4f48;
+  --muted: #54716a;
+  --rule: #d2e8df;
+  --pen: #1b6e59;
+  --pen-soft: #dcf1e8;
+  --hl: #ffeaa0;
+  --hl-pink: #ffc6d3;
+  --hl-green: #a6ebcb;
+  --hl-ink: #15302a;
+  --good: #187a52;
+  --bad: #b83a4c;
+}
+[data-palette='munt'][data-mode='dark'] {
+  --paper: #0f1f1b;
+  --sheet: #172b26;
+  --ink: #ebf7f2;
+  --ink-soft: #c6ded6;
+  --muted: #8eaaa2;
+  --rule: #2a443d;
+  --pen: #8fe0c4;
+  --pen-soft: #1f3a33;
+  --hl: #ffe68f;
+  --hl-pink: #ffadc0;
+  --hl-green: #8fe6bf;
+  --hl-ink: #13261f;
+  --good: #7be0b0;
+  --bad: #ff8f9f;
+}
+
+/* Perzik: peach paper, plum ink */
+[data-palette='perzik'] {
+  --paper: #fdf4ee;
+  --sheet: #fffdfb;
+  --ink: #3a2221;
+  --ink-soft: #5a3c3a;
+  --muted: #86685f;
+  --rule: #f1dccf;
+  --pen: #993d63;
+  --pen-soft: #fbe5e3;
+  --hl: #ffd0b3;
+  --hl-pink: #ffbcd2;
+  --hl-green: #c3e8c6;
+  --hl-ink: #3a2221;
+  --good: #2b7a46;
+  --bad: #b73a2e;
+}
+[data-palette='perzik'][data-mode='dark'] {
+  --paper: #241716;
+  --sheet: #2f1f1e;
+  --ink: #fbefea;
+  --ink-soft: #e4cfc8;
+  --muted: #b39a92;
+  --rule: #4a3330;
+  --pen: #ffaecb;
+  --pen-soft: #432a2c;
+  --hl: #ffc9a8;
+  --hl-pink: #ffadc8;
+  --hl-green: #a7dfae;
+  --hl-ink: #2e1a19;
+  --good: #8fdca5;
+  --bad: #ff9a8c;
+}
+
+/* Lucht: sky-blue paper, steel-blue ink */
+[data-palette='lucht'] {
+  --paper: #eff6fd;
+  --sheet: #ffffff;
+  --ink: #12273e;
+  --ink-soft: #2e4560;
+  --muted: #5b718b;
+  --rule: #d3e2f2;
+  --pen: #24619e;
+  --pen-soft: #ddebfa;
+  --hl: #bfe1ff;
+  --hl-pink: #ffc6da;
+  --hl-green: #bcead0;
+  --hl-ink: #12273e;
+  --good: #19774f;
+  --bad: #b83550;
+}
+[data-palette='lucht'][data-mode='dark'] {
+  --paper: #0d1a29;
+  --sheet: #142538;
+  --ink: #edf5fd;
+  --ink-soft: #c8d8ea;
+  --muted: #8ea4bd;
+  --rule: #263c55;
+  --pen: #9fcbff;
+  --pen-soft: #1b3350;
+  --hl: #a9d6ff;
+  --hl-pink: #ffadc8;
+  --hl-green: #95e2b8;
+  --hl-ink: #0f2133;
+  --good: #74d9a6;
+  --bad: #ff8fa5;
+}
+
+/* Mode-dependent details. Set on whichever element carries data-mode, so previews can differ from the page. */
+:root,
+[data-mode='light'] {
+  color-scheme: light;
+  --hl-text: currentColor;
+  --hl-h: 62%;
+  --hl-pos: 85%;
+}
+/* On dark paper the marker covers the full glyph height and text turns dark, so letters stay crisp. */
+[data-mode='dark'] {
+  color-scheme: dark;
+  --hl-text: var(--hl-ink);
+  --hl-h: 92%;
+  --hl-pos: 55%;
+}
+
+/* Main text font (data-font on <html>). Headings keep the display face. */
+:root {
+  --font-body: 'Atkinson Hyperlegible', ui-sans-serif, system-ui, sans-serif;
+}
+:root[data-font='serif'] {
+  --font-body: 'Literata', Georgia, 'Times New Roman', serif;
+}
+:root[data-font='comic'] {
+  --font-body: 'Comic Sans MS', 'Comic Neue', 'Chalkboard SE', 'Comic Sans', cursive;
 }
 
 html,
@@ -85,30 +257,21 @@ h1, h2, h3 {
   border-radius: 0.8em 0.3em;
   background-image: linear-gradient(100deg, transparent 0.5%, var(--c) 2%, var(--c) 96%, transparent 99.5%);
   background-repeat: no-repeat;
-  background-size: 100% var(--hl-h, 62%);
-  background-position: 0 85%;
+  background-size: 100% var(--hl-h);
+  background-position: 0 var(--hl-pos);
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
-  color: inherit;
+  color: var(--hl-text);
 }
 .hl-pink { --c: var(--hl-pink); }
 .hl-green { --c: var(--hl-green); }
-
-/* On dark paper the marker covers the full glyph height and text turns dark, so letters stay crisp. */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) :is(.hl, .hl-pink, .hl-green) {
-    color: #14213d;
-    --hl-h: 92%;
-    background-position: 0 55%;
-  }
-}
 
 /* Sweep in (used when revealing a score or a flashcard). */
 .hl-sweep {
   animation: sweep 0.55s cubic-bezier(0.3, 0.7, 0.2, 1) both;
 }
 @keyframes sweep {
-  from { background-size: 0% var(--hl-h, 62%); }
+  from { background-size: 0% var(--hl-h); }
 }
 
 /* Notebook sheet with ruled lines. */

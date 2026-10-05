@@ -1,4 +1,5 @@
 import type { Lang, Role, Takeaways, TopicTree } from './schemas';
+import type { Appearance } from './appearance';
 
 export type Millis = number;
 
@@ -12,6 +13,7 @@ export interface UserDoc {
   name: string;
   photoURL?: string;
   uiLang: Lang;
+  appearance?: Appearance;
   xp: number;
   streak: number;
   bestStreak: number;

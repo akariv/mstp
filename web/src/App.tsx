@@ -12,6 +12,8 @@ import Practice from './pages/Practice';
 import Vocabulary from './pages/Vocabulary';
 import Flashcards from './pages/Flashcards';
 import Takeaways from './pages/Takeaways';
+import Settings from './pages/Settings';
+import { getAppearance, setAppearance } from './lib/appearance';
 
 const AdminHome = lazy(() => import('./pages/admin/AdminHome'));
 const AdminUsers = lazy(() => import('./pages/admin/AdminUsers'));
@@ -29,6 +31,15 @@ function Gate() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile?.uiLang]);
 
+  // Apply the appearance saved on the profile (chosen on another device).
+  useEffect(() => {
+    const saved = profile?.appearance;
+    if (!saved) return;
+    const now = getAppearance();
+    if (saved.palette !== now.palette || saved.mode !== now.mode || saved.font !== now.font) setAppearance(saved);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.appearance?.palette, profile?.appearance?.mode, profile?.appearance?.font]);
+
   if (user === undefined) return <Spinner />;
   if (!user || !role) return <Login />;
 
@@ -41,6 +52,7 @@ function Gate() {
         <Route path="w/:weekId/s/:subjectId/oefenen" element={<Practice />} />
         <Route path="w/:weekId/s/:subjectId/kernpunten/:topicId/:subtopicId?" element={<Takeaways />} />
         <Route path="woorden" element={<Vocabulary />} />
+        <Route path="weergave" element={<Settings />} />
         <Route path="kaartjes" element={<Flashcards />} />
         {role === 'admin' && (
           <>
